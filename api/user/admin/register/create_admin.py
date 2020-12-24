@@ -2,7 +2,7 @@
 """
 Created on Mon Dec 21 15:52:26 2020
 
-@author: Acer
+@author: Maaz
 """
 import os
 import random
@@ -13,23 +13,22 @@ import asyncio
 import nest_asyncio
 nest_asyncio.apply()
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '../../../api/'))
-print(BASE_DIR)
 sys.path.append(BASE_DIR )
 from project_dir import *
 from db_connection import *
 from datetime import datetime 
 import pytz    
-    
+from sqlalchemy import exc      
   
-   
-
-class RegisterAdmin:
+class CreateAdmin:
     
     def __init__(self, name, username, email, cell_num, password,auth_access):
+        
+        
         self.conn =  Database()
-        self.conn = self.conn.create_connection()
+        self.conn = self.conn.initialise_db_connection()
         self.transaction = self.conn.begin()
-        self.unique_id =  self.generate_uniq_useridkey()
+        self.unique_id =  ""
         self.name = name
         self.username = username
         self.email = email
@@ -42,32 +41,42 @@ class RegisterAdmin:
         self.login_count = 0
      
         
-    async def get_current_time():
+    async def get_current_time(self):
+        """
+        Return the current time to log user registration
+
+        """
         
         IST = pytz.timezone('Asia/Karachi') 
         now = datetime.now(IST) 
         reg_date = str(now.strftime('%Y-%m-%d %H:%M:%S'))
         self.reg_date = reg_date 
-         
+        return self.reg_date 
     
         
     async def sanitize_user_input(self):
         
         cleaner = Cleaner(tags=[], attributes={}, styles=[], protocols=[], strip=True, strip_comments=True, filters=None)
+        self.name = (cleaner.clean(self.name))
         self.username = (cleaner.clean(self.username))
         self.email = (cleaner.clean(self.email))
+        self.cell_num = (cleaner.clean(self.cell_num))
         self.password = (cleaner.clean(self.password))
+        self.auth_access =  (cleaner.clean(self.auth_access))
     
     
     
     async def encrypt_user_password(self):
         
         self.password = sha256((self.password).encode('utf-8')).hexdigest()
+        return self.password
+        
     
+    
+    async def check_admin_exist(self):
         
-    async def check_admin_exist(self,username):
-        
-        result = self.conn.execute('SELECT * FROM auth_users where email = "{}" or username = "{}" '.format(self.email,self.username))
+        query ='SELECT * FROM auth_users where email = (%s) or username = (%s);'
+        result =  self.conn.execute(query,self.email,self.username)
         record  = result.fetchall()
         if(len(record) > 0):
             return True
@@ -81,33 +90,45 @@ class RegisterAdmin:
         self.unique_id = ''
         for i in range(0, 11):
             self.unique_id += random.choice(characters)
-        result = self.conn.execute('SELECT * FROM auth_users where useridkey = "{}"'.format(self.unique_id))    
+        query ='SELECT * FROM auth_users where useridkey = %s;'
+        result =  self.conn.execute(query,self.unique_id)    
         record  = len(result.fetchall())
         if(record == 0):
             return self.unique_id
         else:
-            generate_useridkey(self)
+            await self.generate_uniq_useridkey()
     
 
 
     async def add_new_admin(self):
-        try:
-            insert_query = "INSERT INTO auth_users VALUES ('','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}','{}')".format(self.unique_id,self.name,self.username,self.email,self.cell_num,self.password,self.reg_date,self.last_login,self.auth_access,self.verifcation, self.login_count )
-            result = self.conn.execute(insert_query)
-            return True 
-        except Exception as e:
-            print(e)
+        """
+        Adds a new admin 
+    
+        """
+        try:  
+            self.unique_id = await self.generate_uniq_useridkey()
+            self.reg_date = await self.get_current_time()
+            self.password = await self.encrypt_user_password() 
+                           
+            query = "INSERT INTO auth_users VALUES (%s,%s, %s, %s,%s,%s, %s, %s, %s ,%s, %s, %s);"
+            result = self.conn.execute(query,'',self.unique_id,self.name,self.username,self.email,self.cell_num,self.password,self.reg_date,self.last_login,self.auth_access,self.verifcation, self.login_count )
+            
+        except exc.SQLAlchemyError:
+            self.transaction.rollback()
+            raise
             return False
+        else:
+            self.transaction.commit()
+            return True
+       
         
+       
         
     async def close_database(self):
+        """
+        Close  the database connection.
+    
+        """
         self.conn.close()
    
-  
-if __name__ == "__main__":
-   
-    
-    
-    user_one = RegisterAdmin("Naveed","asdfDASDfred","asdads@naveed.com","0313232431324","test","Full Control")
-    user_one.add_new_admin()
   

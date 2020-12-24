@@ -12,19 +12,23 @@ import asyncio
 import nest_asyncio
 
 class Database:  
+    
+    
     def __init__(self):
+        
        self.db_user = "root"
        self.db_pass = ""
        self.db_host = "localhost"
        self.db_port = "3306"
-       self.db_name = "akberi_internal"
+       self.db_name = "akberi_internal"  ###dumy database
        
-    async def initialise_db_connection(self):
+       
+    def initialise_db_connection(self):
+        
         try:
             url =  ('mysql+pymysql://{}:{}@{}:{}/{}?charset=utf8mb4'.format(self.db_user, self.db_pass,self.db_host, self.db_port, self.db_name))
             engine = sql.create_engine(url)
             connection = engine.connect()
-           
             return connection
             
         except Exception as e:
@@ -33,7 +37,32 @@ class Database:
 
 
 
-    def perform_login_action(self):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''
+    def create_database(self):
           """
            Cretes Async task to handle user login request separately
            """
@@ -51,9 +80,9 @@ class Database:
           
           loop = asyncio.get_event_loop() 
           task_obj = loop.create_task(self.initialise_db_connection())
-          login_code = loop.run_until_complete(task_obj)
-          
-         
+          database_connection = loop.run_until_complete(task_obj)
+          return database_connection
+'''
 
 
 
