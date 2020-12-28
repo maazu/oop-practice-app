@@ -62,15 +62,30 @@ class AdminLogin:
         else:
              return False  
          
+            
+         
+    async def retrive_user_id_key(self):
+        
+        query =  "SELECT useridkey FROM auth_users where username = %s;"
+        result =  self.conn.execute(query,self.username)
+        record  = result.fetchall()
+        record  = [user_id[0] for user_id in record]
+        print(record)
+        if(len(record) > 0):
+            
+            return record
+        
+        else:
+            return False  
          
 
     async def match_password(self):
         
-        query =  "SELECT * FROM auth_users where password =  %s AND username = %s or email = %s;"
-        result =  self.conn.execute(query,self.password,self.username,self.email)
+        query =  "SELECT * FROM auth_users where password =  %s AND username = %s;"
+        result =  self.conn.execute(query,self.password,self.username)
         record  = result.fetchall()
         if(len(record) > 0):
-            print("dasd")
+            
             return True
         
         else:
